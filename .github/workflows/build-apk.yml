@@ -8,11 +8,9 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
-
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -27,28 +25,23 @@ jobs:
         with:
           gradle-version: "8.7"
 
-      -       - name: Diagnose project
+      - name: Diagnose project
         run: |
           echo "===== ROOT ====="
           pwd
-
-          echo "===== FILES ====="
-          find . -maxdepth 6 -type f | sort
-
           echo "===== GRADLE FILES ====="
           find . -type f \( -name "settings.gradle*" -o -name "build.gradle*" \) | sort
-
           echo "===== APP DIRECTORY ====="
           if [ -d app ]; then
             echo "app directory EXISTS"
             find app -maxdepth 6 -type f | sort
           else
             echo "ERROR: app directory DOES NOT EXIST"
+            exit 1
           fi
 
       - name: Build Debug APK
-        run: |
-          gradle :app:assembleDebug --stacktrace
+        run: gradle :app:assembleDebug --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
