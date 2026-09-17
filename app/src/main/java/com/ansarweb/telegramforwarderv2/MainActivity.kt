@@ -20,7 +20,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var passwordInput: EditText
 
     private var client: Client? = null
-
     private var parametersSent = false
     private var phoneSent = false
     private var loginStarted = false
@@ -28,10 +27,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        Client.execute(
-            TdApi.SetLogVerbosityLevel(0)
-        )
-
+        Client.execute(TdApi.SetLogVerbosityLevel(0))
         buildUi()
     }
 
@@ -66,7 +62,6 @@ class MainActivity : AppCompatActivity() {
 
         val loginButton = Button(this).apply {
             text = "شروع ورود به تلگرام"
-
             setOnClickListener {
                 startTelegramLogin()
             }
@@ -80,7 +75,6 @@ class MainActivity : AppCompatActivity() {
 
         val codeButton = Button(this).apply {
             text = "تأیید کد"
-
             setOnClickListener {
                 checkCode()
             }
@@ -96,7 +90,6 @@ class MainActivity : AppCompatActivity() {
 
         val passwordButton = Button(this).apply {
             text = "تأیید رمز دومرحله‌ای"
-
             setOnClickListener {
                 checkPassword()
             }
@@ -128,14 +121,9 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        val apiIdText =
-            apiIdInput.text.toString().trim()
-
-        val apiHash =
-            apiHashInput.text.toString().trim()
-
-        val phone =
-            phoneInput.text.toString().trim()
+        val apiIdText = apiIdInput.text.toString().trim()
+        val apiHash = apiHashInput.text.toString().trim()
+        val phone = phoneInput.text.toString().trim()
 
         if (apiIdText.isBlank() ||
             apiHash.isBlank() ||
@@ -146,8 +134,7 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        val apiId =
-            apiIdText.toIntOrNull()
+        val apiId = apiIdText.toIntOrNull()
 
         if (apiId == null) {
             status.text = "API ID باید عددی باشد."
@@ -193,37 +180,23 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        val parameters =
-            TdApi.SetTdlibParameters()
-
-        parameters.useTestDc = false
-
-        parameters.databaseDirectory =
-            filesDir.absolutePath + "/tdlib"
-
-        parameters.filesDirectory =
-            filesDir.absolutePath + "/tdlib_files"
-
-        parameters.databaseEncryptionKey =
-            ByteArray(0)
-
-        parameters.useFileDatabase = true
-        parameters.useChatInfoDatabase = true
-        parameters.useMessageDatabase = true
-        parameters.useSecretChats = false
-
-        parameters.apiId = apiId
-        parameters.apiHash = apiHash
-
-        parameters.systemLanguageCode = "fa"
-
-        parameters.deviceModel = "Android"
-
-        parameters.systemVersion =
-            android.os.Build.VERSION.RELEASE
-                ?: "Android"
-
-        parameters.applicationVersion = "2.1.0"
+        // مهم: TDLibX این کلاس را با سازندهٔ پارامتری می‌خواهد.
+        val parameters = TdApi.SetTdlibParameters(
+            false,
+            filesDir.absolutePath + "/tdlib",
+            filesDir.absolutePath + "/tdlib_files",
+            ByteArray(0),
+            true,
+            true,
+            true,
+            false,
+            apiId,
+            apiHash,
+            "fa",
+            "Android",
+            android.os.Build.VERSION.RELEASE ?: "Android",
+            "2.1.0"
+        )
 
         client?.send(parameters) { result ->
 
@@ -351,7 +324,7 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        when (val state = update.authorizationState) {
+        when (update.authorizationState) {
 
             is TdApi.AuthorizationStateWaitTdlibParameters -> {
 
@@ -427,9 +400,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
-            else -> {
-                // سایر stateها فعلاً نیازی به اقدام ندارند.
-            }
+            else -> Unit
         }
     }
 
