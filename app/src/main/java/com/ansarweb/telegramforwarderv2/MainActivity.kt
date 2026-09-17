@@ -19,7 +19,7 @@ class MainActivity : AppCompatActivity() {
 
         val usernameInput = EditText(this).apply {
             hint = "@username"
-            singleLine = true
+            setSingleLine(true)
         }
 
         val status = TextView(this).apply {
