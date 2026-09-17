@@ -1,12 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 <uses-permission android:name="android.permission.INTERNET" />
     <application
-        android:allowBackup="true"
-        android:label="Telegram Forwarder V2"
-        android:supportsRtl="true"
-        android:theme="@style/Theme.TelegramForwarderV2">
-
+    android:allowBackup="true"
+    android:label="Telegram Forwarder V2"
+    android:supportsRtl="true"
+    android:theme="@style/Theme.TelegramForwarderV2"
+    tools:replace="android:label">
         <activity
             android:name=".MainActivity"
             android:exported="true">
