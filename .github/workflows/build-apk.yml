@@ -27,18 +27,24 @@ jobs:
         with:
           gradle-version: "8.7"
 
-      - name: Verify project
+      -       - name: Diagnose project
         run: |
-          echo "Checking Android project..."
+          echo "===== ROOT ====="
+          pwd
 
-          test -f settings.gradle.kts
-          test -f build.gradle.kts
-          test -f gradle.properties
-          test -f app/build.gradle.kts
-          test -f app/src/main/AndroidManifest.xml
-          test -f app/src/main/java/com/ansarweb/telegramforwarderv2/MainActivity.kt
+          echo "===== FILES ====="
+          find . -maxdepth 6 -type f | sort
 
-          echo "Project structure OK."
+          echo "===== GRADLE FILES ====="
+          find . -type f \( -name "settings.gradle*" -o -name "build.gradle*" \) | sort
+
+          echo "===== APP DIRECTORY ====="
+          if [ -d app ]; then
+            echo "app directory EXISTS"
+            find app -maxdepth 6 -type f | sort
+          else
+            echo "ERROR: app directory DOES NOT EXIST"
+          fi
 
       - name: Build Debug APK
         run: |
