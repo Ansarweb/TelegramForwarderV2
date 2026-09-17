@@ -23,6 +23,7 @@ class MainActivity : AppCompatActivity() {
 
     private var parametersSent = false
     private var phoneSent = false
+    private var loginStarted = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -32,18 +33,6 @@ class MainActivity : AppCompatActivity() {
         )
 
         buildUi()
-
-        client = Client.create(
-            { update ->
-                handleUpdate(update)
-            },
-            { error ->
-                runOnUiThread {
-                    status.text = "خطای TDLib: ${error.message}"
-                }
-            },
-            null
-        )
     }
 
     private fun buildUi() {
@@ -93,20 +82,7 @@ class MainActivity : AppCompatActivity() {
             text = "تأیید کد"
 
             setOnClickListener {
-                val code = codeInput.text.toString().trim()
-
-                if (code.isBlank()) {
-                    status.text = "کد تأیید را وارد کن."
-                    return@setOnClickListener
-                }
-
-                client?.send(
-                    TdApi.CheckAuthenticationCode(code)
-                ) {
-                    runOnUiThread {
-                        status.text = "کد بررسی شد..."
-                    }
-                }
+                checkCode()
             }
         }
 
@@ -122,25 +98,12 @@ class MainActivity : AppCompatActivity() {
             text = "تأیید رمز دومرحله‌ای"
 
             setOnClickListener {
-                val password = passwordInput.text.toString()
-
-                if (password.isBlank()) {
-                    status.text = "رمز دومرحله‌ای را وارد کن."
-                    return@setOnClickListener
-                }
-
-                client?.send(
-                    TdApi.CheckAuthenticationPassword(password)
-                ) {
-                    runOnUiThread {
-                        status.text = "رمز بررسی شد..."
-                    }
-                }
+                checkPassword()
             }
         }
 
         status = TextView(this).apply {
-            text = "وضعیت: در انتظار..."
+            text = "وضعیت: آماده"
             textSize = 16f
         }
 
@@ -160,9 +123,19 @@ class MainActivity : AppCompatActivity() {
 
     private fun startTelegramLogin() {
 
-        val apiIdText = apiIdInput.text.toString().trim()
-        val apiHash = apiHashInput.text.toString().trim()
-        val phone = phoneInput.text.toString().trim()
+        if (loginStarted) {
+            status.text = "اتصال قبلاً شروع شده است..."
+            return
+        }
+
+        val apiIdText =
+            apiIdInput.text.toString().trim()
+
+        val apiHash =
+            apiHashInput.text.toString().trim()
+
+        val phone =
+            phoneInput.text.toString().trim()
 
         if (apiIdText.isBlank() ||
             apiHash.isBlank() ||
@@ -173,7 +146,8 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        val apiId = apiIdText.toIntOrNull()
+        val apiId =
+            apiIdText.toIntOrNull()
 
         if (apiId == null) {
             status.text = "API ID باید عددی باشد."
@@ -182,148 +156,289 @@ class MainActivity : AppCompatActivity() {
 
         parametersSent = false
         phoneSent = false
+        loginStarted = true
 
-        status.text = "در حال اتصال به TDLib..."
+        status.text = "در حال ایجاد اتصال TDLib..."
+
+        client = Client.create(
+            { update ->
+                handleUpdate(update)
+            },
+            { error ->
+                runOnUiThread {
+                    status.text =
+                        "خطای TDLib: ${error.message}"
+                }
+            },
+            null
+        )
+    }
+
+    private fun sendTdlibParameters() {
+
+        val apiId =
+            apiIdInput.text.toString()
+                .trim()
+                .toIntOrNull()
+
+        val apiHash =
+            apiHashInput.text.toString()
+                .trim()
+
+        if (apiId == null || apiHash.isBlank()) {
+            runOnUiThread {
+                status.text =
+                    "API ID یا API Hash نامعتبر است."
+            }
+            return
+        }
+
+        val parameters =
+            TdApi.SetTdlibParameters()
+
+        parameters.useTestDc = false
+
+        parameters.databaseDirectory =
+            filesDir.absolutePath + "/tdlib"
+
+        parameters.filesDirectory =
+            filesDir.absolutePath + "/tdlib_files"
+
+        parameters.databaseEncryptionKey =
+            ByteArray(0)
+
+        parameters.useFileDatabase = true
+        parameters.useChatInfoDatabase = true
+        parameters.useMessageDatabase = true
+        parameters.useSecretChats = false
+
+        parameters.apiId = apiId
+        parameters.apiHash = apiHash
+
+        parameters.systemLanguageCode = "fa"
+
+        parameters.deviceModel = "Android"
+
+        parameters.systemVersion =
+            android.os.Build.VERSION.RELEASE
+                ?: "Android"
+
+        parameters.applicationVersion = "2.1.0"
+
+        client?.send(parameters) { result ->
+
+            runOnUiThread {
+
+                if (result is TdApi.Error) {
+                    status.text =
+                        "خطا در تنظیم TDLib: ${result.message}"
+                } else {
+                    status.text =
+                        "TDLib آماده شد؛ در حال ورود..."
+                }
+            }
+        }
+
+        parametersSent = true
+    }
+
+    private fun sendPhoneNumber() {
+
+        if (phoneSent) {
+            return
+        }
+
+        val phone =
+            phoneInput.text.toString().trim()
+
+        if (phone.isBlank()) {
+            runOnUiThread {
+                status.text =
+                    "شماره تلفن را وارد کن."
+            }
+            return
+        }
+
+        phoneSent = true
+
+        client?.send(
+            TdApi.SetAuthenticationPhoneNumber(
+                phone,
+                null
+            )
+        ) { result ->
+
+            runOnUiThread {
+
+                if (result is TdApi.Error) {
+                    phoneSent = false
+
+                    status.text =
+                        "خطا در ارسال شماره: ${result.message}"
+                } else {
+                    status.text =
+                        "کد تأیید تلگرام ارسال شد."
+                }
+            }
+        }
+    }
+
+    private fun checkCode() {
+
+        val code =
+            codeInput.text.toString().trim()
+
+        if (code.isBlank()) {
+            status.text =
+                "کد تأیید را وارد کن."
+            return
+        }
+
+        status.text =
+            "در حال بررسی کد..."
+
+        client?.send(
+            TdApi.CheckAuthenticationCode(code)
+        ) { result ->
+
+            runOnUiThread {
+
+                if (result is TdApi.Error) {
+                    status.text =
+                        "خطا در کد: ${result.message}"
+                } else {
+                    status.text =
+                        "کد تأیید شد..."
+                }
+            }
+        }
+    }
+
+    private fun checkPassword() {
+
+        val password =
+            passwordInput.text.toString()
+
+        if (password.isBlank()) {
+            status.text =
+                "رمز دومرحله‌ای را وارد کن."
+            return
+        }
+
+        status.text =
+            "در حال بررسی رمز..."
+
+        client?.send(
+            TdApi.CheckAuthenticationPassword(password)
+        ) { result ->
+
+            runOnUiThread {
+
+                if (result is TdApi.Error) {
+                    status.text =
+                        "خطا در رمز: ${result.message}"
+                } else {
+                    status.text =
+                        "رمز تأیید شد..."
+                }
+            }
+        }
     }
 
     private fun handleUpdate(update: TdApi.Object) {
 
-        if (update is TdApi.UpdateAuthorizationState) {
+        if (update !is TdApi.UpdateAuthorizationState) {
+            return
+        }
 
-            when (val state = update.authorizationState) {
+        when (val state = update.authorizationState) {
 
-                is TdApi.AuthorizationStateWaitTdlibParameters -> {
+            is TdApi.AuthorizationStateWaitTdlibParameters -> {
 
-                    if (!parametersSent) {
+                if (!parametersSent) {
 
-                        parametersSent = true
-
-                        val apiId =
-                            apiIdInput.text.toString()
-                                .trim()
-                                .toIntOrNull()
-
-                        val apiHash =
-                            apiHashInput.text.toString()
-                                .trim()
-
-                        if (apiId == null || apiHash.isBlank()) {
-                            runOnUiThread {
-                                status.text =
-                                    "ابتدا API ID و API Hash را وارد کن."
-                            }
-                            return
-                        }
-
-                        val parameters =
-                            TdApi.SetTdlibParameters()
-
-                        parameters.useTestDc = false
-                        parameters.databaseDirectory =
-                            filesDir.absolutePath + "/tdlib"
-                        parameters.filesDirectory =
-                            filesDir.absolutePath + "/tdlib_files"
-                        parameters.databaseEncryptionKey =
-                            ByteArray(0)
-                        parameters.useFileDatabase = true
-                        parameters.useChatInfoDatabase = true
-                        parameters.useMessageDatabase = true
-                        parameters.useSecretChats = false
-                        parameters.apiId = apiId
-                        parameters.apiHash = apiHash
-                        parameters.systemLanguageCode = "fa"
-                        parameters.deviceModel = "Android"
-                        parameters.systemVersion =
-                            android.os.Build.VERSION.RELEASE
-                                ?: "Android"
-                        parameters.applicationVersion = "2.1.0"
-
-                        client?.send(parameters) {
-                            runOnUiThread {
-                                status.text =
-                                    "پارامترهای TDLib ارسال شد..."
-                            }
-                        }
-                    }
-                }
-
-                is TdApi.AuthorizationStateWaitPhoneNumber -> {
-
-                    if (!phoneSent) {
-
-                        phoneSent = true
-
-                        val phone =
-                            phoneInput.text.toString().trim()
-
-                        if (phone.isBlank()) {
-                            runOnUiThread {
-                                status.text =
-                                    "شماره تلفن را وارد کن."
-                            }
-                            return
-                        }
-
-                        client?.send(
-                            TdApi.SetAuthenticationPhoneNumber(
-                                phone,
-                                null
-                            )
-                        ) {
-                            runOnUiThread {
-                                status.text =
-                                    "کد تأیید تلگرام ارسال شد."
-                            }
-                        }
-                    }
-                }
-
-                is TdApi.AuthorizationStateWaitCode -> {
                     runOnUiThread {
                         status.text =
-                            "کد ارسال‌شده از تلگرام را وارد کن."
+                            "در حال تنظیم پارامترهای TDLib..."
                     }
-                }
 
-                is TdApi.AuthorizationStateWaitPassword -> {
+                    sendTdlibParameters()
+                }
+            }
+
+            is TdApi.AuthorizationStateWaitPhoneNumber -> {
+
+                if (!phoneSent) {
+
                     runOnUiThread {
                         status.text =
-                            "رمز دومرحله‌ای تلگرام را وارد کن."
+                            "در حال ارسال شماره تلفن..."
                     }
-                }
 
-                is TdApi.AuthorizationStateReady -> {
-                    runOnUiThread {
-                        status.text =
-                            "✅ ورود موفق بود — حساب تلگرام آماده است."
-                    }
+                    sendPhoneNumber()
                 }
+            }
 
-                is TdApi.AuthorizationStateLoggingOut -> {
-                    runOnUiThread {
-                        status.text = "در حال خروج..."
-                    }
+            is TdApi.AuthorizationStateWaitCode -> {
+
+                runOnUiThread {
+                    status.text =
+                        "📱 کد ارسال‌شده از تلگرام را وارد کن."
                 }
+            }
 
-                is TdApi.AuthorizationStateClosing -> {
-                    runOnUiThread {
-                        status.text = "در حال بستن TDLib..."
-                    }
+            is TdApi.AuthorizationStateWaitPassword -> {
+
+                runOnUiThread {
+                    status.text =
+                        "🔐 رمز دومرحله‌ای تلگرام را وارد کن."
                 }
+            }
 
-                is TdApi.AuthorizationStateClosed -> {
-                    runOnUiThread {
-                        status.text = "TDLib بسته شد."
-                    }
+            is TdApi.AuthorizationStateReady -> {
+
+                runOnUiThread {
+                    status.text =
+                        "✅ ورود موفق بود — حساب تلگرام آماده است."
                 }
+            }
 
-                else -> Unit
+            is TdApi.AuthorizationStateLoggingOut -> {
+
+                runOnUiThread {
+                    status.text =
+                        "در حال خروج..."
+                }
+            }
+
+            is TdApi.AuthorizationStateClosing -> {
+
+                runOnUiThread {
+                    status.text =
+                        "در حال بستن TDLib..."
+                }
+            }
+
+            is TdApi.AuthorizationStateClosed -> {
+
+                runOnUiThread {
+                    status.text =
+                        "TDLib بسته شد."
+                }
+            }
+
+            else -> {
+                // سایر stateها فعلاً نیازی به اقدام ندارند.
             }
         }
     }
 
     override fun onDestroy() {
-        client?.send(TdApi.Close()) {}
+
+        client?.send(
+            TdApi.Close()
+        ) {}
+
         super.onDestroy()
     }
 }
